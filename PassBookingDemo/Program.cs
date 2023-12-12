@@ -2,12 +2,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PassBookingDemo.Data;
 using PassBookingDemo.Models;
-
-namespace PassBookingDemo
+ 
+namespace PassbokningsDemo
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +21,8 @@ namespace PassBookingDemo
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
+
+            builder.Services.AddAutoMapper(typeof(MapperProfile));
 
             var app = builder.Build();
 
@@ -36,6 +38,8 @@ namespace PassBookingDemo
                 app.UseHsts();
             }
 
+            await app.SeedDataAsync();
+
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 
@@ -45,7 +49,7 @@ namespace PassBookingDemo
 
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
+                pattern: "{controller=GymClasses}/{action=Index}/{id?}");
             app.MapRazorPages();
 
             app.Run();

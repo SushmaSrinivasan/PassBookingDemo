@@ -1,0 +1,22 @@
+﻿@model IEnumerable<GymClassesViewModel>
+
+@foreach(var item in Model)
+{
+    <tr>
+        <td>
+            <a asp-action="Details" asp-route-id="@item.Id">@item.Name</a>
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.StartTime)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.Duration)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.Description)
+        </td>
+        <td>
+            <a asp-action="BookingToggle" asp-route-id="@item.Id" class="btn btn-danger">Cancel</a>
+        </td>
+    </tr>
+}

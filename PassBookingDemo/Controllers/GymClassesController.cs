@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,28 +10,44 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PassBookingDemo.Data;
 using PassBookingDemo.Models;
+using PassBookingDemo.Models.ViewModels;
 
 namespace PassBookingDemo.Controllers
 {
+    [Authorize]
     public class GymClassesController : Controller
+
     {
+        private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
 
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public GymClassesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public GymClassesController(IMapper mapper,ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
+          _mapper = mapper;
             _context = context;
             _userManager = userManager;
         }
 
+        [AllowAnonymous]
         // GET: GymClasses
         public async Task<IActionResult> Index()
         {
-            return View(await _context.GymClasses.ToListAsync());
+            var gymClasses = await _context.GymClasses
+                .Include(g => g.AttendingMembers)
+                .Where(g => g.StartTime > DateTime.Now)
+                .ToListAsync();
+
+            var model = _mapper.Map<IndexViewModel>(gymClasses);
+
+            return View(model);
+
+            //return View(await _context.GymClasses.ToListAsync());
         }
 
         // GET: GymClasses/Details/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return RedirectToAction("Index");
@@ -46,7 +63,7 @@ namespace PassBookingDemo.Controllers
 
             return View(gymClassWithAttendees);
         }
-
+        [Authorize(Roles ="Admin")]
         // GET: GymClasses/Create
         public IActionResult Create()
         {
@@ -58,6 +75,7 @@ namespace PassBookingDemo.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([Bind("Id,Name,Description,StartTime,Duration")] GymClass gymClass)
         {
             //ModelState.Remove("AttendingMembers");
@@ -70,6 +88,7 @@ namespace PassBookingDemo.Controllers
             return View(gymClass);
         }
 
+        [Authorize(Roles = "Admin")]
         // GET: GymClasses/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
@@ -91,6 +110,7 @@ namespace PassBookingDemo.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,StartTime,Duration")] GymClass gymClass)
         {
             if (id != gymClass.Id)
@@ -122,6 +142,7 @@ namespace PassBookingDemo.Controllers
         }
 
         // GET: GymClasses/Delete/5
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -142,6 +163,7 @@ namespace PassBookingDemo.Controllers
         // POST: GymClasses/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var gymClass = await _context.GymClasses.FindAsync(id);
@@ -188,5 +210,46 @@ namespace PassBookingDemo.Controllers
 
             return RedirectToAction(nameof(Index));
         }
+        [AllowAnonymous]
+        public async Task<IActionResult> History()
+        {
+            var gymClasses = await _context.GymClasses
+                .Include(g => g.AttendingMembers)
+                .Where(g => g.StartTime < DateTime.Now)
+                .ToListAsync();
+
+            var model = _mapper.Map<IndexViewModel>(gymClasses);
+
+            return View(model);
+        }
+        public async Task<IActionResult> MyHistory()
+        {
+            var userId = _userManager.GetUserId(User);
+            var historicalClasses = await _context.Users
+                .Where(u => u.Id == userId)
+                .SelectMany(u=>u.AttendedClasses)
+                .Select(ac=>ac.GymClass)
+                .Where(g=>g.StartTime < DateTime.Now)
+                .ToListAsync();
+
+            var model = _mapper.Map<IndexViewModel>(historicalClasses);
+
+            return View();
+        }
+        public async Task<IActionResult> MyBookings()
+        {
+            var userId = _userManager.GetUserId(User);
+            var bookedClasses = await _context.Users
+                .Where(u => u.Id == userId)
+                .SelectMany(u => u.AttendedClasses)
+                .Select(ac => ac.GymClass)
+                .Where(g => g.StartTime < DateTime.Now)
+                .ToListAsync();
+
+            var model = _mapper.Map<IndexViewModel>(bookedClasses);
+
+            return View();
+        }
+
     }
 }
